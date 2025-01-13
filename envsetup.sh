@@ -26,7 +26,7 @@ Invoke "source build/envsetup.sh" from your shell to add the following functions
 - m:          Makes from the top of the tree.
 - mm:         Builds and installs all library targets.
 - mmm:        Builds current directory's library targets.
-- make:       Alias for make.
+- make:       Alias for 'm' if there is no Makefile.
 - cgrep:      Greps on all local C/C++ files.
 - kgrep:      Greps on all local Kconfig files.
 - mgrep:      Greps on all local Makefiles and CMake files.
@@ -227,7 +227,7 @@ function dump_build_choices() {
     # Iterate over each directory in the list that contains 'boards'.
     for parent_dir in "${list_of_dirs[@]}"; do
         # Search for subdirectories within the 'boards' directory.
-        find "$parent_dir/boards" -maxdepth 1 -type d | while read -r subdir; do
+        find "$parent_dir/boards" -maxdepth 1 -type d ! -path "$parent_dir/boards" | while read -r subdir; do
             # Check if the subdirectory contains 'configs' and a 'CMakeLists.txt' file.
             if [[ -d "${subdir}/configs" && -f "${subdir}/CMakeLists.txt" ]]; then
                 # Get all subdirectories within 'configs'.
@@ -239,6 +239,19 @@ function dump_build_choices() {
                     fi
                 done
             fi
+            # boards chip level config such as bes
+            find $subdir -maxdepth 1 -type d ! -path $subdir | while read -r chipdir; do
+                if [[ -d "${chipdir}/configs" && -f "${chipdir}/CMakeLists.txt" ]]; then
+                    # Get all subdirectories within 'configs'.
+                    configs_subdirs=("$chipdir"/configs/*)
+                    for config_subdir in "${configs_subdirs[@]}"; do
+                        if [[ -d "$config_subdir" ]]; then
+                            # Format the result string and add it to the final results array.
+                            final_results+=("[$(basename $parent_dir)]-[$(basename $chipdir)]-[$(basename $config_subdir)]")
+                        fi
+                    done
+                fi
+            done
         done
     done
     # Print the final results.
@@ -339,10 +352,16 @@ function lunch() {
 }
 
 function _wrap_build() {
-    OUT_DIR=$(gettop)/out
-    NUTTXDIR=$(gettop)/nuttx
+    TOP_DIR=$(gettop)
+    OUT_DIR=$TOP_DIR/out
+    NUTTXDIR=$TOP_DIR/nuttx
     CMAKE_BINARY_DIR=${OUT_DIR}/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
-    BOARD_CONFIG="vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}"
+
+    if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
+        BOARD_CONFIG="vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}"
+    else
+        BOARD_CONFIG="$(dirname vendor/${VELA_BUILD_TARGET_VENDOR}/boards/*/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG})/${VELA_BUILD_TARGET_CONFIG}"
+    fi
 
     if [[ "${VELA_QUIET_BUILD:-}" == true ]]; then
         "$@"
@@ -749,7 +768,7 @@ function setup_environment() {
         "gettext"
         "mtools"
     )
-
+    declare -A INSTALLS
     for ((i = 0; i < ${#PACKAGES[*]}; i++)); do
         dpkg -l ${PACKAGES[$i]} >/dev/null 2>&1
         if [ $? -eq 1 ]; then
@@ -762,7 +781,7 @@ function setup_environment() {
         return
     fi
 
-    if [ ${#INSTALLS[*]} -eq 1 ] && [ "${INSTALLS[0]}" == "kconfig-frontends" ]; then
+    if [ ${#INSTALLS[*]} -eq 1 ] && [ "${INSTALLS[0]}" = "kconfig-frontends" ]; then
         return
     fi
 
@@ -773,8 +792,8 @@ function setup_environment() {
 
     for ((i = 0; i < ${#INSTALLS[*]}; i++)); do
         result=$(apt-cache search ${INSTALLS[$i]})
-        if [ "$result" == "" ]; then
-            if [ "${INSTALLS[$i]}" == "kconfig-frontends" ]; then
+        if [ "$result" = "" ]; then
+            if [ "${INSTALLS[$i]}" = "kconfig-frontends" ]; then
                 unset INSTALLS[$i]
             fi
         fi
