@@ -14,6 +14,30 @@
 # limitations under the License.
 #
 
+# reset environment
+deactivate() {
+    # reset path
+    if [ -n "${VELA_ORIGINAL_PATH:-}" ]; then
+        PATH="${VELA_ORIGINAL_PATH:-}"
+        export PATH
+        unset VELA_ORIGINAL_PATH
+    fi
+    # rset prompt
+    if [ -n "${VELA_ORIGINAL_PS1:-}" ]; then
+        PS1="${VELA_ORIGINAL_PS1:-}"
+        export PS1
+        unset VELA_ORIGINAL_PS1
+    fi
+    # reset build variables
+    unset VELA_BUILD_TARGET_VENDOR
+    unset VELA_BUILD_TARGET_BOARD
+    unset VELA_BUILD_TARGET_CONFIG
+    if [ ! "${1:-}" = "nondestructive" ]; then
+        # Self destruct!
+        unset -f deactivate
+    fi
+}
+
 # Help prompt
 function hmm() {
     cat <<EOF
@@ -584,6 +608,14 @@ function validate_current_shell() {
 # Add directories to PATH that are NOT dependent on the lunch target.
 # For directories that are lunch-specific, add them in set_lunch_paths
 function setup_global_paths() {
+    export VELA_ORIGINAL_PS1="$PS1"
+    export VELA_ORIGINAL_PATH="$PATH"
+
+    # wrap bash prompt, mark the current state of vela envs
+    env_name="vela-env"
+    PS1="($env_name) $VELA_ORIGINAL_PS1"
+    export PS1
+
     local T=$(gettop)
     if [ ! "$T" ]; then
         echo "Couldn't locate the top of the tree.  Try setting TOP."
@@ -807,6 +839,7 @@ function setup_environment() {
     echo "*************************************************************************************"
 }
 
+deactivate nondestructive
 validate_current_shell
 setup_environment
 setup_global_paths
