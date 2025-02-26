@@ -695,7 +695,11 @@ function setup_global_paths() {
             fi
         done
     done
-
+    lsb_release_version=$(lsb_release -rs | cut -d '.' -f1)
+    # Gdb-multiarch Path
+    if [ "$lsb_release_version" -ge 22 ] && [ -d $T/prebuilts/gcc/linux/gdb-multiarch/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/gcc/linux/gdb-multiarch/bin
+    fi
     # Arm Compiler
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/clang/${SYSTEM}/armclang/bin
 
