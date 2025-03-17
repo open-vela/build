@@ -796,6 +796,10 @@ function setup_global_paths() {
     # Add prebuilt tool
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/${SYSTEM}/${SYS_ARCH}
 
+    # Add CMake prebuilt
+    VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/cmake/bin
+    VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/ninja/bin
+
     # Additional prebuilt GNU tools
     if [[ ${SYSTEM} == "darwin" ]]; then
         VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/gnu/${SYSTEM}/${SYS_ARCH}
