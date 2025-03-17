@@ -32,6 +32,7 @@ deactivate() {
     unset VELA_BUILD_TARGET_VENDOR
     unset VELA_BUILD_TARGET_BOARD
     unset VELA_BUILD_TARGET_CONFIG
+    unset VELA_BUILD_BOARD_CONFIG
     if [ ! "${1:-}" = "nondestructive" ]; then
         # reset nuttx custom name null
         if [[ "${NUTTX_DIR_NAME}" == "nuttx" ]]; then
@@ -200,6 +201,7 @@ function clean_select_configs() {
     export VELA_BUILD_TARGET_VENDOR=
     export VELA_BUILD_TARGET_BOARD=
     export VELA_BUILD_TARGET_CONFIG=
+    export VELA_BUILD_BOARD_CONFIG=
 }
 
 function clunch() {
@@ -319,12 +321,49 @@ function print_lunch_menu() {
 }
 
 function lunch() {
-    local answer
-
+    # sanity checks
     if [[ $# -gt 1 ]]; then
         echo "usage: lunch [target]" >&2
         return 1
     fi
+    # lunch specific args
+    if [[ $# -eq 1 ]]; then
+        TOP_DIR=$(gettop)
+        boardconfig=$1
+        # 1.lunch with full path config
+        if [ -d "$TOP_DIR/$boardconfig" ]; then
+            config_name=$(basename "$boardconfig")
+            board_name=$(basename $(dirname $(dirname "$boardconfig")))
+            if [[ $boardconfig =~ ^(\./)?vendor/ ]]; then
+                vendor_name=$(echo "${boardconfig#./}" | cut -d'/' -f2)
+            else
+                vendor_name=$NUTTX_DIR_NAME
+            fi
+            boardconfig="../$boardconfig"
+        # 2.lunch with nuttx config pair
+        else
+            config_name=$(echo ${boardconfig} | cut -s -d':' -f2)
+            if [ -z "${config_name}" ]; then
+                board_name=$(echo ${boardconfig} | cut -d'/' -f1)
+                config_name=$(echo ${boardconfig} | cut -d'/' -f2)
+            else
+                board_name=$(echo ${boardconfig} | cut -d':' -f1)
+            fi
+            vendor_name=$NUTTX_DIR_NAME
+        fi
+        # clean lastest
+        clean_select_configs
+        export VELA_BUILD_TARGET_VENDOR=$vendor_name
+        export VELA_BUILD_TARGET_BOARD=$board_name
+        export VELA_BUILD_TARGET_CONFIG=$config_name
+        export VELA_BUILD_BOARD_CONFIG=$boardconfig
+
+        echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
+        echo
+        return 0
+    fi
+
+    local answer
 
     local used_lunch_menu=0
 
@@ -390,10 +429,14 @@ function _wrap_build() {
     NUTTXDIR=$TOP_DIR/$NUTTX_DIR_NAME
     CMAKE_BINARY_DIR=${OUT_DIR}/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
 
-    if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
-        BOARD_CONFIG="vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}"
+    if [ -z "${VELA_BUILD_BOARD_CONFIG}" ]; then
+        if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
+            BOARD_CONFIG="../vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}"
+        else
+            BOARD_CONFIG="../$(dirname vendor/${VELA_BUILD_TARGET_VENDOR}/boards/*/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG})/${VELA_BUILD_TARGET_CONFIG}"
+        fi
     else
-        BOARD_CONFIG="$(dirname vendor/${VELA_BUILD_TARGET_VENDOR}/boards/*/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG})/${VELA_BUILD_TARGET_CONFIG}"
+        BOARD_CONFIG=${VELA_BUILD_BOARD_CONFIG}
     fi
 
     if [[ "${VELA_QUIET_BUILD:-}" == true ]]; then
@@ -435,10 +478,16 @@ function _wrap_build() {
     fi
     echo " ####${color_reset}"
     echo
+    echo "${color_success}#### BINARY directory is set: ${CMAKE_BINARY_DIR}"
     return $ret
 }
 
 function _trigger_build() (
+    # have we already lunched ?
+    if [ -z "${VELA_BUILD_TARGET_CONFIG}" ]; then
+        echo "No BUILD TARGET found, please lunch first: lunch [target]"
+        exit 1
+    fi
     local -r bc="$1"
     shift
     local T=$(gettop)
@@ -487,8 +536,8 @@ function make() {
 function do_cmake_generator() {
     if [ ! -d "${CMAKE_BINARY_DIR}" ]; then
         echo -e "Build CMake configuration:"
-        echo -e "  cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=../${BOARD_CONFIG} -DEXTRA_FLAGS=\"${VELA_EXTRA_FLAGS}\" ${VELA_CMAKE_GENERATOR}"
-        if ! cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=../${BOARD_CONFIG} -DEXTRA_FLAGS="${VELA_EXTRA_FLAGS}" ${VELA_CMAKE_GENERATOR}; then
+        echo -e "  cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DEXTRA_FLAGS=\"${VELA_EXTRA_FLAGS}\" ${VELA_CMAKE_GENERATOR}"
+        if ! cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DEXTRA_FLAGS="${VELA_EXTRA_FLAGS}" ${VELA_CMAKE_GENERATOR}; then
             echo "Error: ############# config ${1} fail ##############"
             exit 1
         fi
