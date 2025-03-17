@@ -33,6 +33,10 @@ deactivate() {
     unset VELA_BUILD_TARGET_BOARD
     unset VELA_BUILD_TARGET_CONFIG
     if [ ! "${1:-}" = "nondestructive" ]; then
+        # reset nuttx custom name null
+        if [[ "${NUTTX_DIR_NAME}" == "nuttx" ]]; then
+            unset NUTTX_DIR_NAME
+        fi
         # Self destruct!
         unset -f deactivate
     fi
@@ -63,8 +67,13 @@ Environment options:
 EOF
 }
 
+# check environment override nuttx name
+if [ -z "${NUTTX_DIR_NAME}" ]; then
+    export NUTTX_DIR_NAME="nuttx"
+fi
+
 function gettop {
-    local TOPFILE=nuttx/tools/Unix.mk
+    local TOPFILE=$NUTTX_DIR_NAME/tools/Unix.mk
     # The ${TOP-} expansion allows this to work even with set -u
     if [ -n "${TOP:-}" -a -f "${TOP:-}/$TOPFILE" ]; then
         # The following circumlocution ensures we remove symlinks from TOP.
@@ -133,7 +142,7 @@ function godir() {
         echo -n "Creating index..."
         (
             \cd $T
-            find ./nuttx ./apps ./external ./frameworks ./vendor -type f >$FILELIST
+            find ./$NUTTX_DIR_NAME ./apps ./external ./frameworks ./vendor -type f >$FILELIST
         )
         echo " Done"
         echo ""
@@ -378,7 +387,7 @@ function lunch() {
 function _wrap_build() {
     TOP_DIR=$(gettop)
     OUT_DIR=$TOP_DIR/out
-    NUTTXDIR=$TOP_DIR/nuttx
+    NUTTXDIR=$TOP_DIR/$NUTTX_DIR_NAME
     CMAKE_BINARY_DIR=${OUT_DIR}/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
 
     if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
@@ -560,8 +569,8 @@ function build_current_target() {
     # first check whether CMake generator is done
     do_cmake_generator
     # where we should find in CMake BINAR dir?
-    if [[ "$PWD" == "$T/nuttx"* ]]; then
-        relative_path=$(realpath -s --relative-to="$T/nuttx" "$PWD")
+    if [[ "$PWD" == "$T/$NUTTX_DIR_NAME"* ]]; then
+        relative_path=$(realpath -s --relative-to="$T/$NUTTX_DIR_NAME" "$PWD")
     else
         relative_path=$(realpath -s --relative-to="$T" "$PWD")
     fi
