@@ -721,7 +721,8 @@ function setup_global_paths() {
         "arm64"
         "risc-v"
         "x86_64"
-        "tc32")
+        "tc32"
+        "tricore")
 
     TOOLCHAIN=(
         "gcc"
@@ -746,10 +747,10 @@ function setup_global_paths() {
 
     for ((i = 0; i < ${#ARCH[*]}; i++)); do
         for ((j = 0; j < ${#TOOLCHAIN[*]}; j++)); do
-            if [ -d $T/prebuilts/${TOOLCHAIN[$j]}/${SYSTEM}-${SYS_ARCH}/${ARCH[$i]}/bin ]; then
-                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[$j]}/${SYSTEM}-${SYS_ARCH}/${ARCH[$i]}/bin
-            elif [ -d $T/prebuilts/${TOOLCHAIN[$j]}/${SYSTEM}/${ARCH[$i]}/bin ]; then
-                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[$j]}/${SYSTEM}/${ARCH[$i]}/bin
+            if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin ]; then
+                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin
+            elif [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin ]; then
+                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin
             fi
         done
     done
