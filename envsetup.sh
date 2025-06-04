@@ -752,6 +752,9 @@ function setup_global_paths() {
             elif [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin ]; then
                 VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin
             fi
+            if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin ]; then
+                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin
+            fi
         done
     done
     lsb_release_version=$(lsb_release -rs | cut -d '.' -f1)
