@@ -731,9 +731,12 @@ function setup_global_paths() {
     if [[ "$XTENSAD_LICENSE_FILE" == "" ]]; then
         export XTENSAD_LICENSE_FILE=28000@10.38.168.2
     fi
+    # WASI SDK is clang based toolchain to build WebAssembly targets
     export WASI_SDK_PATH=$T/prebuilts/clang/${SYSTEM}/wasm
+    # Wasm toolchain is used to optimize wasm binaries
+    export WASM_TOOLCHAIN_PATH=${ROOTDIR}/prebuilts/clang/${SYSTEM}/wasm
     # And in with the new...
-    VELA_GLOBAL_BUILD_PATHS=${WASI_SDK_PATH}
+    VELA_GLOBAL_BUILD_PATHS=$T
     VELA_GLOBAL_PYPATHS=$T/prebuilts/tools/python/dist-packages/pyelftools
     VELA_GLOBAL_PYPATHS+=:$T/prebuilts/tools/python/dist-packages/cxxfilt
     VELA_GLOBAL_PYPATHS+=:$T/prebuilts/tools/python/dist-packages/Mako
