@@ -760,6 +760,12 @@ function setup_global_paths() {
             fi
         done
     done
+
+    # Host build-tools
+    if [ -d $T/prebuilts/build-tools/${SYSTEM}-${SYS_ARCH}/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/build-tools/${SYSTEM}-${SYS_ARCH}/bin
+    fi
+
     lsb_release_version=$(lsb_release -rs | cut -d '.' -f1)
     # Gdb-multiarch Path
     if [ "$lsb_release_version" -ge 22 ] && [ -d $T/prebuilts/gcc/linux/gdb-multiarch/bin ]; then
