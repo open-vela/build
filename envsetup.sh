@@ -293,9 +293,46 @@ function dump_build_choices() {
     printf '%s\n' "${final_results[@]}"
 }
 
+# Clear this variable.  It will be built up again when the vendorsetup.sh
+# files are included at the end of this file.
+unset LUNCH_MENU_CHOICES
+function add_lunch_combo() {
+    local new_combo=$1
+    local c
+    for c in ${LUNCH_MENU_CHOICES[@]}; do
+        if [ "$new_combo" = "$c" ]; then
+            return
+        fi
+    done
+    LUNCH_MENU_CHOICES=(${LUNCH_MENU_CHOICES[@]} $new_combo)
+}
+
+function dump_vendor_choices() {
+    printf '%s\n' "${LUNCH_MENU_CHOICES[@]}"
+}
+
+unset MAKE_CHOICES_MAP
+declare -A MAKE_CHOICES_MAP
+
+# Mark a config as a makefile choice
+add_makefile_choice() {
+    local config_name="$1"
+    MAKE_CHOICES_MAP["$config_name"]="1"
+}
+
+# Return true if the given config is a makefile choice
+is_makefile() {
+    local config_name=$1
+    if [[ -n "${MAKE_CHOICES_MAP[\"$config_name\"]}" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 function print_lunch_menu() {
     local choices
-    choices=$(dump_build_choices 2>/dev/null)
+    choices=$(dump_vendor_choices 2>/dev/null)
     local ret=$?
 
     if [ $ret -ne 0 ]; then
@@ -327,7 +364,7 @@ function lunch() {
         return 1
     fi
     # lunch specific args
-    if [[ $# -eq 1 ]]; then
+    if [[ $# -eq 1 ]] && ! [[ "$1" =~ ^[0-9]+$ ]]; then
         TOP_DIR=$(gettop)
         boardconfig=$1
         # 1.lunch with full path config
@@ -384,7 +421,7 @@ function lunch() {
         local -a choices=()
         while IFS= read -r line; do
             choices+=("$line")
-        done < <(dump_build_choices)
+        done < <(dump_vendor_choices)
         if [ $answer -le ${#choices[@]} ]; then
             # array in zsh starts from 1 instead of 0.
             if [ -n "$ZSH_VERSION" ]; then
@@ -401,11 +438,9 @@ function lunch() {
 
     # This must be [vendor]-[board]-[config]
     local vendor board config
-    # Split string on the '-' character.
-    selection=$(echo "$selection" | sed 's/[][]//g')
-
-    IFS="-" read -r vendor board config <<<"$selection"
-
+    split_selection="${selection:1:${#selection}-2}"
+    split_selection=$(echo "$split_selection" | sed 's/]-\[/,/g')
+    IFS="," read -r vendor board config <<<"$split_selection"
     if [[ -z "$vendor" ]] || [[ -z "$board" ]] || [[ -z "$config" ]]; then
         echo
         echo "Invalid lunch combo: $selection"
@@ -421,6 +456,9 @@ function lunch() {
 
     echo -e "The current build configuration lunched with: \033[32m[$vendor]-[$board]-[$config]!"
     echo
+    if is_makefile "[$vendor]-[$board]-[$config]"; then
+        echo "[$vendor]-[$board]-[$config] config remain in makefile."
+    fi
 }
 
 function _wrap_build() {
@@ -544,7 +582,61 @@ function do_cmake_generator() {
     fi
 }
 
+# FIXME:
+# This function is used to build the Makefile project.
+# Used as a transitional tool for projects that do not yet support the full CMake build configuration
+function do_makefile_build() {
+    echo "Note: execute build for Makefile."
+    echo -e "Build command line:"
+    echo -e "  ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}"
+    echo -e "  make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}"
+    echo -e "  make -C ${NUTTXDIR} savedefconfig"
+    local T=$(gettop)
+    local NUTTXDIR=${T}/nuttx
+    local TOOLSDIR=${NUTTXDIR}/tools
+
+    if ! ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}; then
+        echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
+        exit 1
+    fi
+
+    if ! ${BEAR} make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
+        echo "Error: ############# build $T/nuttx/${BOARD_CONFIG} fail ##############"
+        exit 2
+    else
+        if [ -f "${COMPILE_COMMANDS}" ]; then
+            cp ${COMPILE_COMMANDS} ${COMPILE_COMMANDS_BACKUP}
+        fi
+    fi
+
+    if echo "${@}" | grep -q "distclean"; then
+        if [ -f "${COMPILE_COMMANDS}" ]; then
+            rm -rf ${COMPILE_COMMANDS}
+        fi
+        return
+    fi
+
+    if ! make -C ${NUTTXDIR} savedefconfig; then
+        echo "Error: ############# save $T/nuttx/${BOARD_CONFIG} fail ##############"
+        exit 3
+    fi
+
+    if [ -d $T/nuttx/${BOARD_CONFIG} ]; then
+        if grep -q "#include" "$T/nuttx/${BOARD_CONFIG}/defconfig"; then
+            echo "Note: skipping savedefconfig for debug defconfig."
+        else
+            cp ${NUTTXDIR}/defconfig $T/nuttx/${BOARD_CONFIG}
+        fi
+    fi
+}
+
 function build_board() {
+
+    # check if remain Makefile
+    if is_makefile "[${VELA_BUILD_TARGET_VENDOR}]-[${VELA_BUILD_TARGET_BOARD}]-[${VELA_BUILD_TARGET_CONFIG}]"; then
+        do_makefile_build "$@"
+        return 0
+    fi
 
     # first check if the command target is `distclean`
     # cmake is built for out-of-tree, so delete the CMAKE_BINARY_DIR directory directly
@@ -705,7 +797,7 @@ function setup_global_paths() {
     fi
 
     if [ -z "$VELA_EXTRA_FLAGS" ]; then
-        export VELA_EXTRA_FLAGS="-Wno-cpp"
+        export VELA_EXTRA_FLAGS="-Wno-cpp -Wno-deprecated-declarations"
     fi
 
     if [ -z "$VELA_CMAKE_GENERATOR" ]; then
@@ -869,7 +961,6 @@ function setup_environment() {
         "nasm"
         "yasm"
         "libdivsufsort-dev"
-        "libc++-dev"
         "libc++abi-dev"
         "libprotobuf-dev"
         "protobuf-compiler"
@@ -918,7 +1009,43 @@ function setup_environment() {
     echo "*************************************************************************************"
 }
 
+# Execute the contents of any vendorsetup.sh files we can find.
+# Unless we find an allowed-vendorsetup_sh-files file, in which case we'll only
+# load those.
+#
+# This allows loading only approved vendorsetup.sh files
+function source_vendorsetup() {
+    unset VENDOR_PYTHONPATH
+    local T="$(gettop)"
+    allowed=
+    for f in $(cd "$T" && find -L vendor -maxdepth 6 -name 'allowed-vendorsetup_sh-files' 2>/dev/null | sort); do
+        if [ -n "$allowed" ]; then
+            echo "More than one 'allowed_vendorsetup_sh-files' file found, not including any vendorsetup.sh files:"
+            echo "  $allowed"
+            echo "  $f"
+            return
+        fi
+        allowed="$T/$f"
+    done
+
+    allowed_files=
+    [ -n "$allowed" ] && allowed_files=$(cat "$allowed")
+    for dir in vendor; do
+        for f in $(cd "$T" && test -d $dir &&
+            find -L $dir -maxdepth 6 -name 'vendorsetup.sh' 2>/dev/null | sort); do
+
+            if [[ -z "$allowed" || "$allowed_files" =~ $f ]]; then
+                echo "including $f"
+                . "$T/$f"
+            else
+                echo "ignoring $f, not in $allowed"
+            fi
+        done
+    done
+}
+
 deactivate nondestructive
 validate_current_shell
 setup_environment
+source_vendorsetup
 setup_global_paths
