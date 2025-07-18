@@ -990,6 +990,36 @@ function setup_global_paths() {
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/cmake/bin
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/ninja/bin
 
+    # Setup Rust toolchain
+    if type rustup >/dev/null 2>&1; then
+        # Check if RUSTUP_HOME is set to /tools/rust/rustup and handle permissions
+        # This is necessary for Docker environments where the default RUSTUP_HOME is set to /tools/rust/rustup
+        # and it's a read-only directory, will cause issues with rustup toolchain link
+        # and other operations that require write access.
+        if [ -n "$RUSTUP_HOME" ] && [ "$RUSTUP_HOME" == "/tools/rust/rustup" ] && [ -d "$RUSTUP_HOME" ]; then
+            echo "Making $RUSTUP_HOME writable in CI environment..."
+            # Make the directory writable for CI operations
+            sudo chmod 777 -R "$RUSTUP_HOME"
+            echo "RUSTUP_HOME $RUSTUP_HOME is now writable"
+        fi
+
+        RUST_TOOLCHAIN_PATH=${ROOTDIR}/prebuilts/rust/${SYSTEM}/nightly/rustc
+        if [ -d "${RUST_TOOLCHAIN_PATH}" ]; then
+        # Create vela-nightly toolchain link if it doesn't exist
+        if ! rustup toolchain list | grep -q "vela-nightly"; then
+            echo "Setting up vela-nightly Rust toolchain..."
+            rustup toolchain link vela-nightly ${RUST_TOOLCHAIN_PATH}
+        fi
+        # Set vela-nightly as toolchain via RUSTUP_TOOLCHAIN environment variable
+        export RUSTUP_TOOLCHAIN=vela-nightly
+        echo "Rust toolchain set to vela-nightly via RUSTUP_TOOLCHAIN"
+        else
+        echo "Warning: Rust prebuilt toolchain not found at ${RUST_TOOLCHAIN_PATH}"
+        fi
+    else
+        echo "Warning: rustup not found, skipping Rust toolchain setup"
+    fi
+
     # Additional prebuilt GNU tools
     if [[ ${SYSTEM} == "darwin" ]]; then
         VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/gnu/${SYSTEM}/${SYS_ARCH}
