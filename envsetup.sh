@@ -810,8 +810,8 @@ function setup_global_paths() {
     ARCH=(
         "xtensa"
         "arm"
-        "arm64"
-        "risc-v"
+        "aarch64"
+        "riscv"
         "x86_64"
         "tc32"
         "tricore")
@@ -842,14 +842,23 @@ function setup_global_paths() {
 
     for ((i = 0; i < ${#ARCH[*]}; i++)); do
         for ((j = 0; j < ${#TOOLCHAIN[*]}; j++)); do
+            # TODO: remove when all archs bin repo are supported
             if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin ]; then
                 VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin
             elif [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin ]; then
+            # TODO: remove special case for unique path such as tc32 tricore
                 VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin
             fi
+            # TODO: remove and change to x86_64-none-elf
             if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin ]; then
                 VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin
             fi
+
+            for TOOLCHAIN_BIN in $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-{eabi,elf}/bin; do
+                if [ -d ${TOOLCHAIN_BIN} ]; then
+                    VELA_GLOBAL_BUILD_PATHS+=:${TOOLCHAIN_BIN}
+                fi
+            done
         done
     done
 
