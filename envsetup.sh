@@ -540,15 +540,15 @@ function _trigger_build() (
 )
 
 function m() {
-    _trigger_build "build_board" "$@"
+    _trigger_build "_build_board" "$@"
 }
 
 function mm() {
-    _trigger_build "build_and_install_board" "$@"
+    _trigger_build "_build_and_install_board" "$@"
 }
 
 function mmm() {
-    _trigger_build "build_current_target" "$@"
+    _trigger_build "_build_current_target" "$@"
 }
 
 function get_make_command() {
@@ -567,11 +567,11 @@ function get_make_command() {
     echo m
 }
 
-function make() {
+function _make() {
     $(get_make_command $@) $@
 }
 
-function do_cmake_generator() {
+function _do_cmake_generator() {
     if [ ! -d "${CMAKE_BINARY_DIR}" ]; then
         echo -e "Build CMake configuration:"
         echo -e "  cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DEXTRA_FLAGS=\"${VELA_EXTRA_FLAGS}\" ${VELA_CMAKE_GENERATOR}"
@@ -585,7 +585,7 @@ function do_cmake_generator() {
 # FIXME:
 # This function is used to build the Makefile project.
 # Used as a transitional tool for projects that do not yet support the full CMake build configuration
-function do_makefile_build() {
+function _do_makefile_build() {
     echo "Note: execute build for Makefile."
     echo -e "Build command line:"
     echo -e "  ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}"
@@ -630,11 +630,11 @@ function do_makefile_build() {
     fi
 }
 
-function build_board() {
+function _build_board() {
 
     # check if remain Makefile
     if is_makefile "[${VELA_BUILD_TARGET_VENDOR}]-[${VELA_BUILD_TARGET_BOARD}]-[${VELA_BUILD_TARGET_CONFIG}]"; then
-        do_makefile_build "$@"
+        _do_makefile_build "$@"
         return 0
     fi
 
@@ -656,7 +656,7 @@ function build_board() {
     # cmake verbose
     v_arg=""
     # check if cmake configuration is required
-    do_cmake_generator
+    _do_cmake_generator
     # check if the command target is `Xconfig`
     for arg in "${@:1}"; do
         if [[ $arg == *config ]]; then
@@ -691,9 +691,9 @@ function build_board() {
 
 }
 
-function build_and_install_board() {
+function _build_and_install_board() {
 
-    build_board "$@"
+    _build_board "$@"
 
     echo -e "  cmake --install ${CMAKE_BINARY_DIR}"
     if ! cmake --install ${CMAKE_BINARY_DIR}; then
@@ -705,10 +705,10 @@ function build_and_install_board() {
 
 }
 
-function build_current_target() {
+function _build_current_target() {
     local T=$(gettop)
     # first check whether CMake generator is done
-    do_cmake_generator
+    _do_cmake_generator
     # where we should find in CMake BINAR dir?
     if [[ "$PWD" == "$T/$NUTTX_DIR_NAME"* ]]; then
         relative_path=$(realpath -s --relative-to="$T/$NUTTX_DIR_NAME" "$PWD")
@@ -826,7 +826,7 @@ function setup_global_paths() {
     # WASI SDK is clang based toolchain to build WebAssembly targets
     export WASI_SDK_PATH=$T/prebuilts/clang/${SYSTEM}/wasm
     # Wasm toolchain is used to optimize wasm binaries
-    export WASM_TOOLCHAIN_PATH=${ROOTDIR}/prebuilts/clang/${SYSTEM}/wasm
+    export WASM_TOOLCHAIN_PATH=$T/prebuilts/clang/${SYSTEM}/wasm
     # And in with the new...
     VELA_GLOBAL_BUILD_PATHS=$T
     VELA_GLOBAL_PYPATHS=$T/prebuilts/tools/python/dist-packages/pyelftools
