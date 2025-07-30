@@ -835,9 +835,9 @@ function setup_global_paths() {
         export XTENSAD_LICENSE_FILE=28000@10.38.168.2
     fi
     # WASI SDK is clang based toolchain to build WebAssembly targets
-    export WASI_SDK_PATH=$T/prebuilts/clang/${SYSTEM}/wasm
+    export WASI_SDK_PATH=$T/prebuilts/clang-wasm/${SYSTEM}-${SYS_ARCH}
     # Wasm toolchain is used to optimize wasm binaries
-    export WASM_TOOLCHAIN_PATH=$T/prebuilts/clang/${SYSTEM}/wasm
+    export WASM_TOOLCHAIN_PATH=$T/prebuilts/clang-wasm/${SYSTEM}-${SYS_ARCH}
     # And in with the new...
     VELA_GLOBAL_BUILD_PATHS=$T
     VELA_GLOBAL_PYPATHS=$T/prebuilts/tools/python/dist-packages/pyelftools
@@ -851,27 +851,30 @@ function setup_global_paths() {
     # Recommended to use kconfiglib instead of kconfig-frontends
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/python/bin
 
+    # gcc
     for ((i = 0; i < ${#ARCH[*]}; i++)); do
-        for ((j = 0; j < ${#TOOLCHAIN[*]}; j++)); do
-            # TODO: remove when all archs bin repo are supported
-            if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin ]; then
-                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}/bin
-            elif [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin ]; then
-            # TODO: remove special case for unique path such as tc32 tricore
-                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}/${ARCH[@]:$i:1}/bin
+        # TODO: remove and change to x86_64-none-elf
+        if [ -d $T/prebuilts/gcc/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin ]; then
+            VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/gcc/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin
+        fi
+        for TOOLCHAIN_BIN in $T/prebuilts/gcc/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}{,-none}-{eabi,elf}/bin; do
+            if [ -d ${TOOLCHAIN_BIN} ]; then
+                VELA_GLOBAL_BUILD_PATHS+=:${TOOLCHAIN_BIN}
             fi
-            # TODO: remove and change to x86_64-none-elf
-            if [ -d $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin ]; then
-                VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-linux-gnu/bin
-            fi
-
-            for TOOLCHAIN_BIN in $T/prebuilts/${TOOLCHAIN[@]:$j:1}/${SYSTEM}-${SYS_ARCH}/${ARCH[@]:$i:1}-none-{eabi,elf}/bin; do
-                if [ -d ${TOOLCHAIN_BIN} ]; then
-                    VELA_GLOBAL_BUILD_PATHS+=:${TOOLCHAIN_BIN}
-                fi
-            done
         done
     done
+
+    # TODO: standard clang support for multiple targets
+    # clang
+
+    # clang-arm
+    if [ -d $T/prebuilts/clang-arm/${SYSTEM}-${SYS_ARCH}/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/clang-arm/${SYSTEM}-${SYS_ARCH}/bin
+    fi
+    # clang-xtensa
+    if [ -d $T/prebuilts/clang-xtensa/${SYSTEM}-${SYS_ARCH}/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/clang-xtensa/${SYSTEM}-${SYS_ARCH}/bin
+    fi
 
     # Host build-tools
     if [ -d $T/prebuilts/build-tools/${SYSTEM}-${SYS_ARCH}/bin ]; then
@@ -880,8 +883,8 @@ function setup_global_paths() {
 
     lsb_release_version=$(lsb_release -rs | cut -d '.' -f1)
     # Gdb-multiarch Path
-    if [ "$lsb_release_version" -ge 22 ] && [ -d $T/prebuilts/gcc/linux/gdb-multiarch/bin ]; then
-        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/gcc/linux/gdb-multiarch/bin
+    if [ "$lsb_release_version" -ge 22 ] && [ -d $T/prebuilts/gdb/${SYSTEM}-${SYS_ARCH}/gdb-multiarch/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/gdb/${SYSTEM}-${SYS_ARCH}/gdb-multiarch/bin
     fi
     # Arm Compiler
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/clang/${SYSTEM}/armclang/bin
