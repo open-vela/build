@@ -313,17 +313,14 @@ function dump_vendor_choices() {
 
 unset MAKE_CHOICES_MAP
 declare -A MAKE_CHOICES_MAP
-
 # Mark a config as a makefile choice
 add_makefile_choice() {
-    local config_name="$1"
-    MAKE_CHOICES_MAP["$config_name"]="1"
+    MAKE_CHOICES_MAP[$1]="1"
 }
 
 # Return true if the given config is a makefile choice
 is_makefile() {
-    local config_name=$1
-    if [[ -n "${MAKE_CHOICES_MAP[\"$config_name\"]}" ]]; then
+    if [[ -n ${MAKE_CHOICES_MAP[$1]} ]]; then
         return 0
     else
         return 1
@@ -363,9 +360,13 @@ function lunch() {
         echo "usage: lunch [target]" >&2
         return 1
     fi
+    local TOP_DIR=$(gettop)
+    local config_name
+    local board_name
+    local vendor_name
+    local boardconfig
     # lunch specific args
     if [[ $# -eq 1 ]] && ! [[ "$1" =~ ^[0-9]+$ ]]; then
-        TOP_DIR=$(gettop)
         boardconfig=$1
         # 1.lunch with full path config
         if [ -d "$TOP_DIR/$boardconfig" ]; then
@@ -397,6 +398,7 @@ function lunch() {
 
         echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
         echo
+        export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/out/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
         return 0
     fi
 
@@ -458,6 +460,8 @@ function lunch() {
     echo
     if is_makefile "[$vendor]-[$board]-[$config]"; then
         echo "[$vendor]-[$board]-[$config] config remain in makefile."
+    else
+        export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/out/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
     fi
 }
 
