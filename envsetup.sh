@@ -1046,6 +1046,12 @@ function setup_global_paths() {
         echo "Warning: rustup not found, skipping Rust toolchain setup"
     fi
 
+    # Set RUST_SRC_PATH to point to rust source library
+    export RUST_SRC_PATH=${ROOTDIR}/prebuilts/rust/linux/nightly/rustc/lib/rustlib/src/rust/library
+
+    # Set RUST_UNIFIED_LIB_CONFIG for path-based Rust build configuration
+    export RUST_UNIFIED_LIB_CONFIG=$'[path-bases]\nruntime = "'$T'/frameworks/runtimes/rust"'
+
     # Additional prebuilt GNU tools
     if [[ ${SYSTEM} == "darwin" ]]; then
         VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/gnu/${SYSTEM}/${SYS_ARCH}
