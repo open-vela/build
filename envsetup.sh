@@ -1022,14 +1022,13 @@ function setup_global_paths() {
         # This is necessary for Docker environments where the default RUSTUP_HOME is set to /tools/rust/rustup
         # and it's a read-only directory, will cause issues with rustup toolchain link
         # and other operations that require write access.
-        if [ -n "$RUSTUP_HOME" ] && [ "$RUSTUP_HOME" == "/tools/rust/rustup" ] && [ -d "$RUSTUP_HOME" ]; then
+        if [ "$RUSTUP_HOME" == "/tools/rust/rustup" ]; then
             echo "Making $RUSTUP_HOME writable in CI environment..."
-            # Make the directory writable for CI operations
-            sudo chmod 777 -R "$RUSTUP_HOME"
+            sudo chmod 777 -R "/tools/rust"
             echo "RUSTUP_HOME $RUSTUP_HOME is now writable"
         fi
 
-        RUST_TOOLCHAIN_PATH=${ROOTDIR}/prebuilts/rust/${SYSTEM}/nightly/rustc
+        RUST_TOOLCHAIN_PATH=$T/prebuilts/rust/${SYSTEM}/nightly/rustc
         if [ -d "${RUST_TOOLCHAIN_PATH}" ]; then
         # Create vela-nightly toolchain link if it doesn't exist
         if ! rustup toolchain list | grep -q "vela-nightly"; then
@@ -1047,7 +1046,7 @@ function setup_global_paths() {
     fi
 
     # Set RUST_SRC_PATH to point to rust source library
-    export RUST_SRC_PATH=${ROOTDIR}/prebuilts/rust/linux/nightly/rustc/lib/rustlib/src/rust/library
+    export RUST_SRC_PATH=$T/prebuilts/rust/linux/nightly/rustc/lib/rustlib/src/rust/library
 
     # Set RUST_UNIFIED_LIB_CONFIG for path-based Rust build configuration
     export RUST_UNIFIED_LIB_CONFIG=$'[path-bases]\nruntime = "'$T'/frameworks/runtimes/rust"'
