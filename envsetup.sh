@@ -1162,10 +1162,15 @@ function source_vendorsetup() {
             fi
         done
     done
+    # source Top custom vendorsetup.sh if exists
+    if [ -e $T/vendorsetup.sh ]; then
+        echo "including root custom vendorsetup.sh"
+        . "$T/vendorsetup.sh"
+    fi
 }
 
 deactivate nondestructive
 validate_current_shell
 setup_environment
-source_vendorsetup
 setup_global_paths
+source_vendorsetup
