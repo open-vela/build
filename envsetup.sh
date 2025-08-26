@@ -356,8 +356,8 @@ function print_lunch_menu() {
 
 function lunch() {
     # sanity checks
-    if [[ $# -gt 1 ]]; then
-        echo "usage: lunch [target]" >&2
+    if [[ $# -gt 2 ]]; then
+        echo "usage: lunch [target] [outdir]" >&2
         return 1
     fi
     local TOP_DIR=$(gettop)
@@ -365,8 +365,9 @@ function lunch() {
     local board_name
     local vendor_name
     local boardconfig
+    local lunch_with_specific_config
     # lunch specific args
-    if [[ $# -eq 1 ]] && ! [[ "$1" =~ ^[0-9]+$ ]]; then
+    if [[ $# -ge 1 ]] && ! [[ "$1" =~ ^[0-9]+$ ]]; then
         boardconfig=$1
         # 1.lunch with full path config
         if [ -d "$TOP_DIR/$boardconfig" ]; then
@@ -389,77 +390,83 @@ function lunch() {
             fi
             vendor_name=$NUTTX_DIR_NAME
         fi
-        # clean lastest
-        clean_select_configs
-        export VELA_BUILD_TARGET_VENDOR=$vendor_name
-        export VELA_BUILD_TARGET_BOARD=$board_name
-        export VELA_BUILD_TARGET_CONFIG=$config_name
-        export VELA_BUILD_BOARD_CONFIG=$boardconfig
 
         echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
         echo
-        export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/out/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
-        return 0
+
+        lunch_with_specific_config=true
+
     fi
 
-    local answer
+    if [[ "$lunch_with_specific_config" != "true" ]]; then
+        local answer
 
-    local used_lunch_menu=0
+        local used_lunch_menu=0
 
-    if [ "$1" ]; then
-        answer=$1
-    else
-        print_lunch_menu
-        echo "Which would you like?"
-        echo -n "Pick from common choices above or specify your own: "
-        read answer
-        used_lunch_menu=1
-    fi
-
-    local selection=
-    if [ -z "$answer" ]; then
-        selection="[sim]-[vela]-[vela]"
-    elif (echo -n $answer | grep -q -e "^[0-9][0-9]*$"); then
-        local -a choices=()
-        while IFS= read -r line; do
-            choices+=("$line")
-        done < <(dump_vendor_choices)
-        if [ $answer -le ${#choices[@]} ]; then
-            # array in zsh starts from 1 instead of 0.
-            if [ -n "$ZSH_VERSION" ]; then
-                selection=${choices[$(($answer))]}
-            else
-                selection=${choices[$(($answer - 1))]}
-            fi
+        if [ "$1" ]; then
+            answer=$1
+        else
+            print_lunch_menu
+            echo "Which would you like?"
+            echo -n "Pick from common choices above or specify your own: "
+            read answer
+            used_lunch_menu=1
         fi
-    else
-        selection=$answer
-    fi
 
-    export TARGET_BUILD_APPS=
+        local selection=
+        if [ -z "$answer" ]; then
+            selection="[sim]-[vela]-[vela]"
+        elif (echo -n $answer | grep -q -e "^[0-9][0-9]*$"); then
+            local -a choices=()
+            while IFS= read -r line; do
+                choices+=("$line")
+            done < <(dump_vendor_choices)
+            if [ $answer -le ${#choices[@]} ]; then
+                # array in zsh starts from 1 instead of 0.
+                if [ -n "$ZSH_VERSION" ]; then
+                    selection=${choices[$(($answer))]}
+                else
+                    selection=${choices[$(($answer - 1))]}
+                fi
+            fi
+        else
+            selection=$answer
+        fi
 
-    # This must be [vendor]-[board]-[config]
-    local vendor board config
-    split_selection="${selection:1:${#selection}-2}"
-    split_selection=$(echo "$split_selection" | sed 's/]-\[/,/g')
-    IFS="," read -r vendor board config <<<"$split_selection"
-    if [[ -z "$vendor" ]] || [[ -z "$board" ]] || [[ -z "$config" ]]; then
-        echo
-        echo "Invalid lunch combo: $selection"
-        echo "Valid combos must be of the form [vendor]-[board]-[config]"
-        return 1
+        export TARGET_BUILD_APPS=
+
+        # This must be [vendor]-[board]-[config]
+        split_selection="${selection:1:${#selection}-2}"
+        split_selection=$(echo "$split_selection" | sed 's/]-\[/,/g')
+        IFS="," read -r vendor_name board_name config_name <<<"$split_selection"
+        if [[ -z "$vendor_name" ]] || [[ -z "$board_name" ]] || [[ -z "$config_name" ]]; then
+            echo
+            echo "Invalid lunch combo: $selection"
+            echo "Valid combos must be of the form [vendor]-[board]-[config]"
+            return 1
+        fi
+
     fi
 
     # clean first
     clean_select_configs
-    export VELA_BUILD_TARGET_VENDOR=$vendor
-    export VELA_BUILD_TARGET_BOARD=$board
-    export VELA_BUILD_TARGET_CONFIG=$config
+    export VELA_BUILD_TARGET_VENDOR=$vendor_name
+    export VELA_BUILD_TARGET_BOARD=$board_name
+    export VELA_BUILD_TARGET_CONFIG=$config_name
 
-    echo -e "The current build configuration lunched with: \033[32m[$vendor]-[$board]-[$config]!"
+    echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
     echo
-    if is_makefile "[$vendor]-[$board]-[$config]"; then
-        echo "[$vendor]-[$board]-[$config] config remain in makefile."
+    if is_makefile "[$vendor_name]-[$board_name]-[$config_name]"; then
+        echo "[$vendor_name]-[$board_name]-[$config_name] config remain in makefile."
+    fi
+
+    # lunch with custom binary dir
+    if [ -n "${2:-}" ]; then
+        if [[ "$2" =~ ^/ ]]; then
+                export CURRENT_LUNCH_BINARY_DIR=$2
+        else
+            export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/$2
+        fi
     else
         export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/out/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
     fi
@@ -469,7 +476,7 @@ function _wrap_build() {
     TOP_DIR=$(gettop)
     OUT_DIR=$TOP_DIR/out
     NUTTXDIR=$TOP_DIR/$NUTTX_DIR_NAME
-    CMAKE_BINARY_DIR=${OUT_DIR}/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
+    CMAKE_BINARY_DIR=$CURRENT_LUNCH_BINARY_DIR
 
     if [ -z "${VELA_BUILD_BOARD_CONFIG}" ]; then
         if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
