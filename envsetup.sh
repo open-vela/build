@@ -453,6 +453,7 @@ function lunch() {
     export VELA_BUILD_TARGET_VENDOR=$vendor_name
     export VELA_BUILD_TARGET_BOARD=$board_name
     export VELA_BUILD_TARGET_CONFIG=$config_name
+    export VELA_BUILD_BOARD_CONFIG=$boardconfig
 
     echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
     echo
@@ -666,6 +667,8 @@ function _build_board() {
     fi
     # cmake verbose
     v_arg=""
+    # ninja args
+    ninja_arg=("--")
     # check if cmake configuration is required
     _do_cmake_generator
     # check if the command target is `Xconfig`
@@ -682,10 +685,22 @@ function _build_board() {
         if [[ "$arg" =~ ^V=1$ ]]; then
             v_arg+="-v"
         fi
+        if [[ "$arg" =~ ^--keeprsp$ ]]; then
+            ninja_arg+=("-d")
+            ninja_arg+=("keeprsp")
+        fi
+        if [[ "$arg" =~ ^--keepdep$ ]]; then
+            ninja_arg+=("-d")
+            ninja_arg+=("keepdepfile")
+        fi
+        if [[ "$arg" =~ ^--keepgoing$ ]]; then
+            ninja_arg+=("-k")
+            ninja_arg+=("0")
+        fi
     done
     # do cmake build
-    echo -e "  cmake --build ${CMAKE_BINARY_DIR} $j_arg $v_arg"
-    if ! cmake --build ${CMAKE_BINARY_DIR} $j_arg $v_arg; then
+    echo -e "  cmake --build ${CMAKE_BINARY_DIR} $j_arg $v_arg ${ninja_arg[@]}"
+    if ! cmake --build ${CMAKE_BINARY_DIR} $j_arg $v_arg ${ninja_arg[@]}; then
         echo "Error: ############# build ${1} fail ##############"
         exit 2
     fi
