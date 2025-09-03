@@ -917,7 +917,7 @@ function setup_global_paths() {
     # Generate compile database file compile_commands.json
     if type bear >/dev/null 2>&1; then
         # get version of bear
-        BEAR_VERSION=$(bear --version | awk '{print $2}' | awk -F. '{printf("%d%03d%03d ", $1,$2,$3)}')
+        BEAR_VERSION=$(bear --version | awk '{print $2}' | awk -F. '{printf("%d%03d%03d\n", $1,$2,$3)}')
 
         # judge version of bear
         if [ $BEAR_VERSION -ge 3000000 ]; then
