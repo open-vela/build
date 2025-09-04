@@ -584,10 +584,13 @@ function _make() {
 }
 
 function _do_cmake_generator() {
+    if command -v ccache &> /dev/null; then
+        VELA_CMAKE_USE_CCACHE=ccache
+    fi
     if [ ! -d "${CMAKE_BINARY_DIR}" ]; then
         echo -e "Build CMake configuration:"
         echo -e "  cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DEXTRA_FLAGS=\"${VELA_EXTRA_FLAGS}\" ${VELA_CMAKE_GENERATOR}"
-        if ! cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DEXTRA_FLAGS="${VELA_EXTRA_FLAGS}" ${VELA_CMAKE_GENERATOR}; then
+        if ! cmake -B ${CMAKE_BINARY_DIR} -S ${NUTTXDIR} -DBOARD_CONFIG=${BOARD_CONFIG} -DCMAKE_C_COMPILER_LAUNCHER=${VELA_CMAKE_USE_CCACHE} -DCMAKE_CXX_COMPILER_LAUNCHER=${VELA_CMAKE_USE_CCACHE} -DEXTRA_FLAGS="${VELA_EXTRA_FLAGS}" ${VELA_CMAKE_GENERATOR}; then
             echo "Error: ############# config ${1} fail ##############"
             exit 1
         fi
