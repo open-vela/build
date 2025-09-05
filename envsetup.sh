@@ -658,8 +658,8 @@ function _do_makefile_build() {
         echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 1
     fi
-
-    if ! ${BEAR} make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
+    echo "${BEAR[@]} make -C ${NUTTXDIR} EXTRAFLAGS=\"$VELA_EXTRA_FLAGS\" "
+    if ! ${BEAR[@]} make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
         echo "Error: ############# build $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 2
     else
@@ -979,7 +979,7 @@ function setup_global_paths() {
 
             COMPILE_COMMANDS=$T/compile_commands.json
             COMPILE_COMMANDS_BACKUP=${COMPILE_COMMANDS_DB_PATH}/compile_commands_${1//\//_}_$(date "+%Y-%m-%d-%H-%M-%S").json
-            export BEAR="bear -a -o ${COMPILE_COMMANDS} "
+            export BEAR=("bear" "-a" "-o" "${COMPILE_COMMANDS} ")
         fi
     fi
 
