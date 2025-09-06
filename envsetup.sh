@@ -658,20 +658,13 @@ function _do_makefile_build() {
         echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 1
     fi
-    echo "${BEAR[@]} make -C ${NUTTXDIR} EXTRAFLAGS=\"$VELA_EXTRA_FLAGS\" "
-    if ! ${BEAR[@]} make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
+
+    if ! makefile_bear make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
         echo "Error: ############# build $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 2
-    else
-        if [ -f "${COMPILE_COMMANDS}" ]; then
-            cp ${COMPILE_COMMANDS} ${COMPILE_COMMANDS_BACKUP}
-        fi
     fi
 
     if echo "${@}" | grep -q "distclean"; then
-        if [ -f "${COMPILE_COMMANDS}" ]; then
-            rm -rf ${COMPILE_COMMANDS}
-        fi
         return
     fi
 
@@ -828,6 +821,23 @@ function validate_current_shell() {
     esac
 }
 
+# Help generate compile_commands.json to enhance the code jump and lookup efficiency
+function makefile_bear() {
+    if [ "${BEAR_MODE:-0}" -eq 0 ]; then
+        # BEAR command not enabled
+        "$@"
+    elif [ "${BEAR_MODE}" -ge 3 ]; then
+        command bear --append --output "compile_commands.json" -- "$@"
+    elif [ "${BEAR_MODE}" -ge 2 ]; then
+        command bear -a -o "compile_commands.json" "$@"
+    else
+        # BEAR_MODE not supported
+        "$@"
+    fi
+
+    return $?
+}
+
 # Add directories to PATH that are NOT dependent on the lunch target.
 # For directories that are lunch-specific, add them in set_lunch_paths
 function setup_global_paths() {
@@ -962,24 +972,19 @@ function setup_global_paths() {
     fi
 
     # Generate compile database file compile_commands.json
+    export BEAR_MODE=0
     if type bear >/dev/null 2>&1; then
         # get version of bear
         BEAR_VERSION=$(bear --version | awk '{print $2}' | awk -F. '{printf("%d%03d%03d\n", $1,$2,$3)}')
 
         # judge version of bear
         if [ $BEAR_VERSION -ge 3000000 ]; then
-            # BEAR="bear --append --output compile_commands.json -- "
+            # bear3 will not compatible with some arch, but we should use cmake.
+            export BEAR_MODE=3
             echo -e "Note: currently not support bear 3.0.0+ for some prebuilt toolchain limited."
-        else
+        elif [ $BEAR_VERSION -ge 2000000 ]; then
             echo -e "Note: bear 2.4.3 in Ubuntu 20.04 works out of box."
-            COMPILE_COMMANDS_DB_PATH="$T/compile_commands"
-            if [ ! -d "$COMPILE_COMMANDS_DB_PATH" ]; then
-                mkdir -p $COMPILE_COMMANDS_DB_PATH
-            fi
-
-            COMPILE_COMMANDS=$T/compile_commands.json
-            COMPILE_COMMANDS_BACKUP=${COMPILE_COMMANDS_DB_PATH}/compile_commands_${1//\//_}_$(date "+%Y-%m-%d-%H-%M-%S").json
-            export BEAR=("bear" "-a" "-o" "${COMPILE_COMMANDS} ")
+            export BEAR_MODE=2
         fi
     fi
 
