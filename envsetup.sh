@@ -197,6 +197,50 @@ function kgrep() {
         -exec grep --color -n "$@" {} +
 }
 
+function pvcc() {
+    if [[ $# -lt 1 ]]; then
+        echo "pvcc: PreView Config Change" >&2
+        echo "usage: pvcc [CONFIG] [VALUE] or [diff file]" >&2
+        return 1
+    fi
+    # have we already lunched ?
+    if [ -z "${VELA_BUILD_TARGET_CONFIG}" ]; then
+        echo "No BUILD TARGET found, please lunch first: lunch [target]"
+        return 1
+    fi
+    local TOP_DIR=$(gettop)
+    local NUTTXDIR=$TOP_DIR/$NUTTX_DIR_NAME
+    local CMAKE_BINARY_DIR=${CURRENT_LUNCH_BINARY_DIR}
+    # check if cmake configuration is required
+    if [ -z "${VELA_BUILD_BOARD_CONFIG}" ]; then
+        if [ -d "$TOP_DIR/vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}" ]; then
+            BOARD_CONFIG="../vendor/${VELA_BUILD_TARGET_VENDOR}/boards/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG}"
+        else
+            BOARD_CONFIG="../$(dirname vendor/${VELA_BUILD_TARGET_VENDOR}/boards/*/${VELA_BUILD_TARGET_BOARD}/configs/${VELA_BUILD_TARGET_CONFIG})/${VELA_BUILD_TARGET_CONFIG}"
+        fi
+    else
+        BOARD_CONFIG=${VELA_BUILD_BOARD_CONFIG}
+    fi
+    if [ ! -d "${CMAKE_BINARY_DIR}" ]; then
+        _do_cmake_generator
+    fi
+
+    if [[ $# -eq 1 ]]; then
+        local diff_file=$1
+        if [[ -e $diff_file ]]; then
+            $TOP_DIR/nuttx/tools/checkkconfig.py -o ${CMAKE_BINARY_DIR} -f ${BOARD_CONFIG}/defconfig -d ${diff_file}
+        else
+            echo "No Diff file found!"
+            return 1
+        fi
+    fi
+
+    if [[ $# -gt 1 ]]; then
+        $TOP_DIR/nuttx/tools/checkkconfig.py -o ${CURRENT_LUNCH_BINARY_DIR} -f ${BOARD_CONFIG}/defconfig -s $@
+    fi
+
+}
+
 function clean_select_configs() {
     export VELA_BUILD_TARGET_VENDOR=
     export VELA_BUILD_TARGET_BOARD=
