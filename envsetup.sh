@@ -1037,6 +1037,12 @@ function setup_global_paths() {
 }
 
 function setup_environment() {
+    # Skip environment by `export VELA_CHECKENV_SKIP=1` and reset by `unset VELA_CHECKENV_SKIP`
+    if [ -n "${VELA_CHECKENV_SKIP}" ] && [ "${VELA_CHECKENV_SKIP}" != "0" ]; then
+        echo "Skipping environment check due to VELA_CHECKENV_SKIP=${VELA_CHECKENV_SKIP}"
+        return 0
+    fi
+
     PACKAGES=(
         "autoconf"
         "automake"
@@ -1091,11 +1097,12 @@ function setup_environment() {
         "mtools"
     )
     declare -A INSTALLS
-    for ((i = 0; i < ${#PACKAGES[*]}; i++)); do
-        dpkg -l ${PACKAGES[$i]} >/dev/null 2>&1
-        if [ $? -eq 1 ]; then
-            echo "WARNING: no packages found matching ${PACKAGES[$i]}"
-            INSTALLS[${#INSTALLS[@]}]=${PACKAGES[$i]}
+    INSTALLED_PKGS=$(dpkg -l | awk '/^ii/ {print $2}')
+
+    for pkg in "${PACKAGES[@]}"; do
+        if ! grep -q "^${pkg}$" <<< "$INSTALLED_PKGS"; then
+            echo "WARNING: no packages found matching ${pkg}"
+            INSTALLS[${#INSTALLS[@]}]=$pkg
         fi
     done
 
