@@ -362,6 +362,20 @@ add_makefile_choice() {
     MAKE_CHOICES_MAP[$1]="1"
 }
 
+unset VENDOR_PRE_BUILD_HOOK_MAP
+declare -A VENDOR_PRE_BUILD_HOOK_MAP
+add_vendor_prebuild_hook(){
+    VENDOR_PRE_BUILD_HOOK_MAP[$1]=$2
+}
+
+_has_vendor_hook() {
+    if [[ -n ${VENDOR_PRE_BUILD_HOOK_MAP[$1]} ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Return true if the given config is a makefile choice
 is_makefile() {
     if [[ -n ${MAKE_CHOICES_MAP[$1]} ]]; then
@@ -531,6 +545,13 @@ function _wrap_build() {
         fi
     else
         BOARD_CONFIG=${VELA_BUILD_BOARD_CONFIG}
+    fi
+
+    # vendor hook before the actual build
+    local triple_config_meta="[$VELA_BUILD_TARGET_VENDOR]-[$VELA_BUILD_TARGET_BOARD]-[$VELA_BUILD_TARGET_CONFIG]"
+    if _has_vendor_hook $triple_config_meta; then
+        echo " execute the vendor hook function for $triple_config_meta:"
+        "${VENDOR_PRE_BUILD_HOOK_MAP[$triple_config_meta]}" $BOARD_CONFIG
     fi
 
     if [[ "${VELA_QUIET_BUILD:-}" == true ]]; then
