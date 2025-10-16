@@ -33,6 +33,9 @@ deactivate() {
     unset VELA_BUILD_TARGET_BOARD
     unset VELA_BUILD_TARGET_CONFIG
     unset VELA_BUILD_BOARD_CONFIG
+    unset VELA_EXTRA_FLAGS
+    unset VELA_CMAKE_GENERATOR
+    unset VELA_USE_MAKEFILE
     if [ ! "${1:-}" = "nondestructive" ]; then
         # reset nuttx custom name null
         if [[ "${NUTTX_DIR_NAME}" == "nuttx" ]]; then
@@ -252,7 +255,7 @@ function clunch() {
     local vendor=$VELA_BUILD_TARGET_VENDOR
     local board=$VELA_BUILD_TARGET_BOARD
     local config=$VELA_BUILD_TARGET_CONFIG
-    echo -e "The current build configuration lunched with: \033[32m[$vendor]-[$board]-[$config]!"
+    echo -e "The current build configuration lunched with: \033[32m[$vendor]-[$board]-[$config]!\033[0m"
 }
 
 # Function: dump_build_choices
@@ -377,7 +380,7 @@ _has_vendor_hook() {
 }
 
 # Return true if the given config is a makefile choice
-is_makefile() {
+_is_makefile() {
     if [[ -n ${MAKE_CHOICES_MAP[$1]} ]]; then
         return 0
     else
@@ -449,9 +452,6 @@ function lunch() {
             vendor_name=$NUTTX_DIR_NAME
         fi
 
-        echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
-        echo
-
         lunch_with_specific_config=true
 
     fi
@@ -513,10 +513,11 @@ function lunch() {
     export VELA_BUILD_TARGET_CONFIG=$config_name
     export VELA_BUILD_BOARD_CONFIG=$boardconfig
 
-    echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!"
+    echo -e "The current build configuration lunched with: \033[32m[$vendor_name]-[$board_name]-[$config_name]!\033[0m"
     echo
-    if is_makefile "[$vendor_name]-[$board_name]-[$config_name]"; then
-        echo "[$vendor_name]-[$board_name]-[$config_name] config remain in makefile."
+    if _is_makefile "[$vendor_name]-[$board_name]-[$config_name]"; then
+        echo -e "\033[33m[$vendor_name]-[$board_name]-[$config_name] config remain in makefile.\033[0m"
+        return 0
     fi
 
     # lunch with custom binary dir
@@ -529,6 +530,8 @@ function lunch() {
     else
         export CURRENT_LUNCH_BINARY_DIR=${TOP_DIR}/out/${VELA_BUILD_TARGET_VENDOR}_${VELA_BUILD_TARGET_BOARD}_${VELA_BUILD_TARGET_CONFIG}
     fi
+
+    echo -e "\033[32m#### BINARY directory is set: ${CURRENT_LUNCH_BINARY_DIR}\033[0m"
 }
 
 function _wrap_build() {
@@ -592,8 +595,7 @@ function _wrap_build() {
         printf "(%s seconds)" $secs
     fi
     echo " ####${color_reset}"
-    echo
-    echo "${color_success}#### BINARY directory is set: ${CMAKE_BINARY_DIR}"
+
     return $ret
 }
 
@@ -706,7 +708,7 @@ function _do_makefile_build() {
 function _build_board() {
 
     # check if remain Makefile
-    if is_makefile "[${VELA_BUILD_TARGET_VENDOR}]-[${VELA_BUILD_TARGET_BOARD}]-[${VELA_BUILD_TARGET_CONFIG}]"; then
+    if _is_makefile "[${VELA_BUILD_TARGET_VENDOR}]-[${VELA_BUILD_TARGET_BOARD}]-[${VELA_BUILD_TARGET_CONFIG}]"  || [ "${VELA_USE_MAKEFILE}" = "1" ]; then
         _do_makefile_build "$@"
         return 0
     fi
@@ -730,6 +732,24 @@ function _build_board() {
     v_arg=""
     # ninja args
     ninja_arg=("--")
+
+    # convenient way to enable extra flags
+    local extra_flags_str=""
+    local found_extra_flags=0
+    for arg in "${@:1}"; do
+        if [[ "$found_extra_flags" == "1" ]]; then
+            extra_flags_str="$extra_flags_str $arg"
+            found_extra_flags=0
+        elif [[ "$arg" == "-e" ]]; then
+            found_extra_flags=1
+        fi
+    done
+
+    if [ ! -z "$extra_flags_str" ]; then
+        echo -e "use custom extra flags: $extra_flags_str"
+        export VELA_EXTRA_FLAGS="$VELA_EXTRA_FLAGS $extra_flags_str"
+    fi
+
     # check if cmake configuration is required
     _do_cmake_generator
     # check if the command target is `Xconfig`
@@ -1067,7 +1087,7 @@ function setup_global_paths() {
     export PYTHONPATH=$VELA_GLOBAL_PYPATHS:$PYTHONPATH
 }
 
-function setup_environment() {
+function vela_env_pack_check() {
     # Skip environment by `export VELA_CHECKENV_SKIP=1` and reset by `unset VELA_CHECKENV_SKIP`
     if [ -n "${VELA_CHECKENV_SKIP}" ] && [ "${VELA_CHECKENV_SKIP}" != "0" ]; then
         echo "Skipping environment check due to VELA_CHECKENV_SKIP=${VELA_CHECKENV_SKIP}"
@@ -1209,7 +1229,6 @@ function source_vendorsetup() {
 
 deactivate nondestructive
 validate_current_shell
-setup_environment
 setup_global_paths
 setup_rust_toolchain
 source_vendorsetup
