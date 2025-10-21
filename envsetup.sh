@@ -884,36 +884,8 @@ function setup_rust_toolchain() {
     local T=$(gettop)
     local SYSTEM=$(uname | tr '[:upper:]' '[:lower:]')
 
-    if type rustup >/dev/null 2>&1; then
-        # Check if RUSTUP_HOME is set to /tools/rust/rustup and handle permissions
-        # This is necessary for Docker environments where the default RUSTUP_HOME is set to /tools/rust/rustup
-        # and it's a read-only directory, will cause issues with rustup toolchain link
-        # and other operations that require write access.
-        if [ -n "$RUSTUP_HOME" ] && [ "$RUSTUP_HOME" == "/tools/rust/rustup" ]; then
-            echo "Making $RUSTUP_HOME writable in CI environment..."
-            sudo chmod 777 -R "/tools/rust"
-            echo "RUSTUP_HOME $RUSTUP_HOME is now writable"
-        fi
-
-        RUST_TOOLCHAIN_PATH=$T/prebuilts/rust/${SYSTEM}/nightly/rustc
-        if [ -d "${RUST_TOOLCHAIN_PATH}" ]; then
-            # Create vela-nightly toolchain link if it doesn't exist
-            if ! rustup toolchain list | grep -q "vela-nightly"; then
-                echo "Setting up vela-nightly Rust toolchain..."
-                rustup toolchain link vela-nightly ${RUST_TOOLCHAIN_PATH}
-            fi
-            # Set vela-nightly as toolchain via RUSTUP_TOOLCHAIN environment variable
-            export RUSTUP_TOOLCHAIN=vela-nightly
-            echo "Rust toolchain set to vela-nightly via RUSTUP_TOOLCHAIN"
-        else
-            echo "Warning: Rust prebuilt toolchain not found at ${RUST_TOOLCHAIN_PATH}"
-        fi
-    else
-        echo "Warning: rustup not found, skipping Rust toolchain setup"
-    fi
-
     # Set RUST_SRC_PATH to point to rust source library
-    export RUST_SRC_PATH=$T/prebuilts/rust/linux/nightly/rustc/lib/rustlib/src/rust/library
+    export RUST_SRC_PATH=$T/prebuilts/rust/${SYSTEM}/nightly/rustc/lib/rustlib/src/rust/library
 
     # Set RUST_UNIFIED_LIB_CONFIG for path-based Rust build configuration
     export RUST_UNIFIED_LIB_CONFIG=$'[path-bases]\nruntime = "'$T'/frameworks/runtimes/rust"'
@@ -1041,6 +1013,11 @@ function setup_global_paths() {
     fi
     # Arm Compiler
     VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/clang/${SYSTEM}/armclang/bin
+
+    # Rust toolchain
+    if [ -d $T/prebuilts/rust/${SYSTEM}/nightly/rustc/bin ]; then
+        VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/rust/${SYSTEM}/nightly/rustc/bin
+    fi
 
     if [ ! -n "${ARM_PRODUCT_DEF}" ]; then
         export ARM_PRODUCT_DEF=${ROOTDIR}/prebuilts/clang/${SYSTEM}/armclang/mappings/eval.elmap
