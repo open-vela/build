@@ -21,3 +21,6 @@ message(STATUS "│  Vela build custom modules base on NuttX build  |")
 message(STATUS "╰─────────────────────────────────────────────────╯")
 
 # TODO: migrate Vela unique compilation configuration to this
+
+include(${NUTTX_APPS_DIR}/external/optee/TA.cmake)
+include(${NUTTX_APPS_DIR}/external/optee/TA_lib.cmake)
