@@ -927,7 +927,7 @@ function setup_rust_toolchain() {
     export RUST_SRC_PATH=$T/prebuilts/rust/${SYSTEM}/nightly/rustc/lib/rustlib/src/rust/library
 
     # Set RUST_UNIFIED_LIB_CONFIG for path-based Rust build configuration
-    export RUST_UNIFIED_LIB_CONFIG=$'[path-bases]\nruntime = "'$T'/frameworks/runtimes/rust"'
+    export RUST_UNIFIED_LIB_CONFIG=$'[path-bases]\nruntime = "'$T'/apps/frameworks/runtimes/rust"'
 }
 
 # Add directories to PATH that are NOT dependent on the lunch target.
