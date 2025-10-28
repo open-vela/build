@@ -1,0 +1,23 @@
+system:
+  - kernel:
+  - framework:
+
+
+graphics:
+  - lvgl: "apps/graphics/lvgl/tools/config_refs.yml"
+  - animengine: "frameworks/graphics/animengine/tools/config_refs.yml"
+  - uikit: "frameworks/graphics/uikit/config_refs.yml"
+  - wm: "frameworks/runtimes/services/wm/tools/config_refs.yml"
+
+multimedia:
+  - media:
+  - mijia_camera:
+
+
+connectivity:
+  - bluetooth:
+  - telephony:
+  - net:
+
+nativeframework:
+  - quickapp:
