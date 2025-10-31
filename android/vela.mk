@@ -25,3 +25,18 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/framework/cpc-extension.jar \
     system/lib64/libcpc_extension_jni.xiaomi.so \
     system/etc/permissions/cpc-extension.xml
+
+# display offload
+
+PRODUCT_SYSTEM_SERVER_JARS_EXTRA += \
+    system_ext:displayoffload-services
+
+PRODUCT_PACKAGES += \
+    displayoffload-services \
+    MiDisplayOffload
+
+PRODUCT_SYSTEM_EXT_PROPERTIES += config.enable_display_offload=true
+TARGET_FS_CONFIG_GEN += vendor/vela/frameworks/graphics/displayoffload/android/config/offload.fs
+SYSTEM_EXT_PRIVATE_SEPOLICY_DIRS += vendor/vela/frameworks/graphics/displayoffload/android/sepolicy
+
+# display offload end
