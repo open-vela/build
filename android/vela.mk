@@ -25,3 +25,5 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/framework/cpc-extension.jar \
     system/lib64/libcpc_extension_jni.xiaomi.so \
     system/etc/permissions/cpc-extension.xml
+
+-include vendor/vela/build/android/$(TARGET_PRODUCT).mk

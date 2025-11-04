@@ -1,0 +1,1 @@
+-include vendor/vela/frameworks/graphics/displayoffload/android/product.mk
