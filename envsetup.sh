@@ -36,6 +36,12 @@ deactivate() {
     unset VELA_EXTRA_FLAGS
     unset VELA_CMAKE_GENERATOR
     unset VELA_USE_MAKEFILE
+
+    # reset CCACHE strategy
+    unset CCACHE_BASEDIR
+    unset CCACHE_COMPILERCHECK
+    unset CCACHE_NOHASHDIR
+    unset CCACHE_SLOPPINESS
     if [ ! "${1:-}" = "nondestructive" ]; then
         # reset nuttx custom name null
         if [[ "${NUTTX_DIR_NAME}" == "nuttx" ]]; then
@@ -682,7 +688,11 @@ function _do_makefile_build() {
         exit 1
     fi
 
-    if ! makefile_bear make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" ${@}; then
+    if command -v ccache &> /dev/null; then
+        VELA_MAKEFILE_USE_CCACHE="CCACHE=ccache"
+    fi
+
+    if ! makefile_bear make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" $VELA_MAKEFILE_USE_CCACHE ${@}; then
         echo "Error: ############# build $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 2
     fi
@@ -1058,6 +1068,12 @@ function setup_global_paths() {
         VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/gnu/${SYSTEM}/${SYS_ARCH}
         VELA_GLOBAL_BUILD_PATHS+=:$T/prebuilts/tools/gnu/${SYSTEM}/universal
     fi
+
+    # CCACHE strategy
+    export CCACHE_BASEDIR=$T
+    export CCACHE_COMPILERCHECK="content"
+    export CCACHE_NOHASHDIR=1
+    export CCACHE_SLOPPINESS="file_macro,time_macros,include_file_ctime,include_file_mtime"
 
     # Finally, set PATH
     export PATH=$VELA_GLOBAL_BUILD_PATHS:$PATH
