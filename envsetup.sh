@@ -683,9 +683,11 @@ function _do_makefile_build() {
     local NUTTXDIR=${T}/nuttx
     local TOOLSDIR=${NUTTXDIR}/tools
 
-    if ! ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}; then
-        echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
-        exit 1
+    if [ ! -r $T/nuttx/.config ]; then
+        if ! ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}; then
+            echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
+            exit 1
+        fi
     fi
 
     if command -v ccache &> /dev/null; then
