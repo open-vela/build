@@ -934,6 +934,10 @@ external = "$T/apps/external/rust"
 android = "$T/apps/external/android"
 EOF
     export RUST_UNIFIED_LIB_CONFIG
+
+    # Generate .cargo/config.toml at project root
+    mkdir -p "$T/.cargo"
+    cat > "$T/.cargo/config.toml" <<< "$RUST_UNIFIED_LIB_CONFIG"
 }
 
 # Add directories to PATH that are NOT dependent on the lunch target.
