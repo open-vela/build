@@ -250,6 +250,18 @@ function pvcc() {
 
 }
 
+_get_recommended_jobs() {
+    local cores=$(nproc 2>/dev/null || echo 1)
+    # Safe computing: Reserve 2 cores, but ensure at least 1 core.
+    if [ "$cores" -gt 4 ]; then
+        echo $((cores - 2))
+    elif [ "$cores" -gt 2 ]; then
+        echo $((cores - 1))
+    else
+        echo 1
+    fi
+}
+
 function clean_select_configs() {
     export VELA_BUILD_TARGET_VENDOR=
     export VELA_BUILD_TARGET_BOARD=
@@ -682,19 +694,32 @@ function _do_makefile_build() {
     local T=$(gettop)
     local NUTTXDIR=${T}/nuttx
     local TOOLSDIR=${NUTTXDIR}/tools
-
+    local lunched="[$VELA_BUILD_TARGET_VENDOR]-[$VELA_BUILD_TARGET_BOARD]-[$VELA_BUILD_TARGET_CONFIG]"
+    local fixed_config=$(cat "$T/.vela_makefile_fixed_config" 2>/dev/null || echo "")
+    local j_arg=$(echo ${@} | grep -oE '\-j[0-9]+')
+    if [ -z "$j_arg" ]; then
+        j_arg="-j$(_get_recommended_jobs)"
+    fi
+    if [[ -n "$fixed_config" && "$lunched" != "$fixed_config" ]]; then
+        echo "\033[33mcurrent lunched has changed from $fixed_config to $lunched \033[0m"
+        if [ -f $T/nuttx/.config ]; then
+            echo "\033[33m do make distclean first: \033[0m"
+            make -C ${NUTTXDIR} distclean $j_arg
+        fi
+    fi
     if [ ! -r $T/nuttx/.config ]; then
         if ! ${TOOLSDIR}/configure.sh -e $T/nuttx/${BOARD_CONFIG}; then
             echo "Error: ############# config $T/nuttx/${BOARD_CONFIG} fail ##############"
             exit 1
         fi
+        echo $lunched > $T/.vela_makefile_fixed_config
     fi
 
     if command -v ccache &> /dev/null; then
         VELA_MAKEFILE_USE_CCACHE="CCACHE=ccache"
     fi
 
-    if ! makefile_bear make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" $VELA_MAKEFILE_USE_CCACHE ${@}; then
+    if ! makefile_bear make -C ${NUTTXDIR} EXTRAFLAGS="$VELA_EXTRA_FLAGS" $VELA_MAKEFILE_USE_CCACHE ${@} $j_arg; then
         echo "Error: ############# build $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 2
     fi
@@ -706,13 +731,15 @@ function _do_makefile_build() {
     if ! make -C ${NUTTXDIR} savedefconfig; then
         echo "Error: ############# save $T/nuttx/${BOARD_CONFIG} fail ##############"
         exit 3
-    fi
-
-    if [ -d $T/nuttx/${BOARD_CONFIG} ]; then
-        if grep -q "#include" "$T/nuttx/${BOARD_CONFIG}/defconfig"; then
-            echo "Note: skipping savedefconfig for debug defconfig."
-        else
-            cp ${NUTTXDIR}/defconfig $T/nuttx/${BOARD_CONFIG}
+    else
+        if echo "${@}" | grep -q "savedefconfig"; then
+            if [ -d $T/nuttx/${BOARD_CONFIG} ]; then
+                if grep -q "#include" "$T/nuttx/${BOARD_CONFIG}/defconfig"; then
+                    echo "Note: skipping savedefconfig for debug defconfig."
+                else
+                    cp ${NUTTXDIR}/defconfig $T/nuttx/${BOARD_CONFIG}
+                fi
+            fi
         fi
     fi
 }
@@ -736,9 +763,9 @@ function _build_board() {
         return 0
     fi
     # check parallelism
-    j_arg=$(echo ${@:1} | grep -oP '\-j[0-9]+')
+    j_arg=$(echo ${@:1} | grep -oE '\-j[0-9]+')
     if [ -z "$j_arg" ]; then
-        j_arg="-j$(nproc)"
+        j_arg="-j$(_get_recommended_jobs)"
     fi
     # cmake verbose
     v_arg=""
