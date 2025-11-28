@@ -16,6 +16,12 @@ PRODUCT_PACKAGES += \
     cpc-extension \
     libcpc_extension_jni.xiaomi
 
+# enable audio hidl hal 7.1
+PRODUCT_PACKAGES += android.hardware.audio@7.1-impl
+
+# enable audio hidl hal 7.1 for vela
+PRODUCT_PACKAGES += android.hardware.audio@7.1-impl.vela
+
 PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/bin/kvget \
     system/bin/kvset \
@@ -27,6 +33,9 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/framework/cpc-extension.jar \
     system/lib64/libcpc_extension_jni.xiaomi.so \
     system/etc/permissions/cpc-extension.xml
+
+## Add vela audio HAL sepolicy
+BOARD_SEPOLICY_DIRS += vendor/vela/hardware/audio/sepolicy/
 
 -include vendor/vela/build/android/$(TARGET_PRODUCT).mk
 
