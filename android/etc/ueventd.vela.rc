@@ -1,0 +1,11 @@
+# Copyright (c) 2023-2025 Xiaomi, Inc.
+# All Rights Reserved.
+# Confidential and Proprietary - Xiaomi, Inc.
+#
+
+# uORB sensor
+/dev/usensor              0660   system     system
+/dev/uorb/*               0660   system     system
+subsystem uorb
+    devname uevent_devname
+    dirname /dev

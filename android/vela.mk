@@ -37,6 +37,10 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
 ## Add vela audio HAL sepolicy
 BOARD_SEPOLICY_DIRS += vendor/vela/hardware/audio/sepolicy/
 
+## Sensor hal
+PRODUCT_COPY_FILES += \
+    vendor/vela/build/android/etc/ueventd.vela.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.vela.rc
+
 -include vendor/vela/build/android/$(TARGET_PRODUCT).mk
 
 ## Vela Bluetooh
