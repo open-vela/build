@@ -29,3 +29,6 @@ PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/etc/permissions/cpc-extension.xml
 
 -include vendor/vela/build/android/$(TARGET_PRODUCT).mk
+
+## Vela Bluetooh
+-include vendor/vela/hardware/bluetooth/system_bt.mk
