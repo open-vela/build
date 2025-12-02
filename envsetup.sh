@@ -938,6 +938,10 @@ EOF
     # Generate .cargo/config.toml at project root
     mkdir -p "$T/.cargo"
     cat > "$T/.cargo/config.toml" <<< "$RUST_UNIFIED_LIB_CONFIG"
+
+    # Set LIBCLANG_PATH for bindgen
+    export LIBCLANG_PATH=$T/prebuilts/rust/linux/extra_libs
+    echo "LIBCLANG_PATH set to: $LIBCLANG_PATH"
 }
 
 # Add directories to PATH that are NOT dependent on the lunch target.
