@@ -8,6 +8,7 @@ PRODUCT_BOOT_JARS += cpc-extension
 PRODUCT_PACKAGES += \
     kvget \
     kvset \
+    rexec \
     rpsock_client \
     rpsock_server \
     TestServerCpc \
@@ -18,6 +19,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_ARTIFACT_PATH_REQUIREMENT_ALLOWED_LIST += \
     system/bin/kvget \
     system/bin/kvset \
+    system/bin/rexec \
     system/bin/rpsock_client \
     system/bin/rpsock_server \
     system/bin/TestServerCpc \
