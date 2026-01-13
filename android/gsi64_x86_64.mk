@@ -1,1 +1,2 @@
 -include vendor/vela/frameworks/graphics/displayoffload/android/product.mk
+-include vendor/vela/frameworks/graphics/filetransfer/android/product.mk
