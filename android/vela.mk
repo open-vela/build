@@ -41,6 +41,12 @@ BOARD_SEPOLICY_DIRS += vendor/vela/hardware/audio/sepolicy/
 PRODUCT_COPY_FILES += \
     vendor/vela/build/android/etc/ueventd.vela.rc:$(TARGET_COPY_OUT_ODM)/etc/ueventd.vela.rc
 
+# Sensor HAL
+-include vendor/vela/hardware/sensor/sensors.mk
+
+# GNSS HAL
+-include vendor/vela/hardware/gnss/gnss.mk
+
 -include vendor/vela/build/android/$(TARGET_PRODUCT).mk
 
 ## Vela Bluetooh
