@@ -987,7 +987,7 @@ function setup_global_paths() {
     fi
 
     if [ -z "$VELA_EXTRA_FLAGS" ]; then
-        export VELA_EXTRA_FLAGS="-Wno-cpp -Wno-deprecated-declarations"
+        export VELA_EXTRA_FLAGS="-Wno-cpp -Wno-deprecated-declarations -Werror"
     fi
 
     if [ -z "$VELA_CMAKE_GENERATOR" ]; then
